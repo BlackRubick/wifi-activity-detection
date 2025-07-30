@@ -85,6 +85,20 @@ class CSIPreprocessor:
     def apply_median_filter(self, data, kernel_size=3):
         """
         Aplica filtro mediano para eliminar picos
+        """
+        print(f"Aplicando filtro mediano con kernel size: {kernel_size}")
+
+        # FIX: Verificar si data es una tupla
+        if isinstance(data, tuple):
+            print(f"⚠️ Datos recibidos como tupla, extrayendo array...")
+            data = data[0] if len(data) > 0 else data
+
+        # Verificar que tenemos un array válido
+        if not hasattr(data, 'shape'):
+            print(f"❌ Error: datos no tienen atributo 'shape'. Tipo: {type(data)}")
+            return data
+        """
+        Aplica filtro mediano para eliminar picos
 
         Args:
             data: Datos de entrada

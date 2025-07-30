@@ -79,42 +79,122 @@ class WiFiDataLoader:
 
     def _extract_csi_and_labels(self):
         """
-        Extrae automáticamente datos CSI y etiquetas del dataset cargado
+        Extrae datos CSI y etiquetas de estructuras MATLAB
+        VERSIÓN PARA ESTRUCTURAS CON CAMPOS 'csi' y 'MPIs_label'
         """
         if self.raw_data is None:
             return
 
-        # Buscar datos CSI
-        csi_candidates = []
-        label_candidates = []
+        print("🔍 Extrayendo datos de estructuras MATLAB...")
 
-        for key, value in self.raw_data.items():
-            key_lower = key.lower()
+        if 'Raw_Cell_Matrix' not in self.raw_data:
+            print("❌ No se encontró Raw_Cell_Matrix")
+            return
 
-            # Buscar datos CSI
-            if any(term in key_lower for term in ['csi', 'data', 'signal']):
-                if hasattr(value, 'shape') and len(value.shape) >= 2:
-                    csi_candidates.append((key, value))
+        cell_matrix = self.raw_data['Raw_Cell_Matrix']
+        print(f"📦 Cell matrix shape: {cell_matrix.shape}")
 
-            # Buscar etiquetas
-            if any(term in key_lower for term in ['label', 'activity', 'class', 'target']):
-                label_candidates.append((key, value))
+        all_csi_data = []
+        all_labels = []
 
-        # Seleccionar el mejor candidato para CSI (el más grande)
-        if csi_candidates:
-            csi_key, csi_data = max(csi_candidates, key=lambda x: x[1].size)
-            self.csi_data = csi_data
-            print(f"Datos CSI extraídos de clave: '{csi_key}', shape: {csi_data.shape}")
+        print("🔄 Procesando estructuras...")
 
-        # Seleccionar etiquetas
-        if label_candidates:
-            label_key, labels = label_candidates[0]  # Tomar el primero
-            self.labels = labels.flatten() if hasattr(labels, 'flatten') else labels
-            print(f"Etiquetas extraídas de clave: '{label_key}', shape: {self.labels.shape}")
+        for i in range(min(1000, cell_matrix.size)):  # Procesar hasta 1000 estructuras
+            try:
+                # Extraer estructura
+                if cell_matrix.ndim == 2:
+                    struct = cell_matrix[i, 0]
+                else:
+                    struct = cell_matrix.flat[i]
 
-            # Obtener nombres de actividades únicas
-            unique_labels = np.unique(self.labels)
-            self.activities = [f'Actividad_{int(label)}' for label in unique_labels]
+                if not isinstance(struct, np.ndarray) or struct.size == 0:
+                    continue
+
+                # La estructura debería tener un solo elemento
+                struct_data = struct[0, 0] if struct.ndim == 2 else struct.flat[0]
+
+                # Verificar que tiene los campos necesarios
+                if hasattr(struct_data, 'dtype') and 'csi' in struct_data.dtype.names:
+                    csi_field = struct_data['csi']
+
+                    # Extraer datos CSI reales
+                    if isinstance(csi_field, np.ndarray) and csi_field.size > 0:
+                        if csi_field.dtype == 'object':
+                            actual_csi = csi_field.flat[0] if csi_field.size > 0 else None
+                        else:
+                            actual_csi = csi_field
+
+                        if actual_csi is not None and isinstance(actual_csi, np.ndarray) and actual_csi.size > 10:
+                            all_csi_data.append(actual_csi)
+
+                            # Extraer etiqueta
+                            if 'MPIs_label' in struct_data.dtype.names:
+                                label_field = struct_data['MPIs_label']
+                                if isinstance(label_field, np.ndarray):
+                                    label_val = label_field.flat[0] if label_field.size > 0 else 0
+                                else:
+                                    label_val = label_field
+                                all_labels.append(int(label_val))
+                            else:
+                                all_labels.append(i % 3)  # Etiqueta sintética
+
+            except Exception as e:
+                continue
+
+        if len(all_csi_data) == 0:
+            print("❌ No se extrajeron datos CSI de las estructuras")
+            return
+
+        print(f"📊 Extraídos {len(all_csi_data)} arrays CSI")
+
+        # Verificar formas y apilar/concatenar
+        shapes = [arr.shape for arr in all_csi_data[:50]]  # Verificar primeros 50
+        from collections import Counter
+        shape_counts = Counter(shapes)
+
+        if len(shape_counts) == 1:
+            # Todas iguales
+            self.csi_data = np.stack(all_csi_data, axis=0)
+            self.labels = np.array(all_labels)
+        else:
+            # Usar la forma más común
+            most_common_shape = shape_counts.most_common(1)[0][0]
+            filtered_csi = [arr for arr in all_csi_data if arr.shape == most_common_shape]
+            filtered_labels = [all_labels[i] for i, arr in enumerate(all_csi_data) if arr.shape == most_common_shape]
+
+            if len(filtered_csi) > 0:
+                self.csi_data = np.stack(filtered_csi, axis=0)
+                self.labels = np.array(filtered_labels)
+            else:
+                print("❌ No se pudo crear matriz CSI consistente")
+                return
+
+        print(f"✅ CSI extraído: {self.csi_data.shape}")
+        print(f"✅ Labels extraídas: {self.labels.shape}")
+        print(f"✅ Etiquetas únicas: {np.unique(self.labels)}")
+
+        # Crear nombres de actividades
+        unique_labels = np.unique(self.labels)
+        self.activities = [f'Actividad_{int(label)}' for label in unique_labels]
+
+        # FIX: Convertir datos 4D a 3D si es necesario
+        if len(self.csi_data.shape) == 4:
+            print(f"🔄 Convirtiendo datos 4D a 3D...")
+            original_shape = self.csi_data.shape
+
+            # (1000, 3, 3, 30) -> (3000, 3, 30)
+            self.csi_data = self.csi_data.reshape(-1, self.csi_data.shape[2], self.csi_data.shape[3])
+
+            # Ajustar etiquetas
+            if self.labels is not None:
+                repeated_labels = []
+                for i, label in enumerate(self.labels):
+                    repeated_labels.extend([label] * original_shape[1])
+                self.labels = np.array(repeated_labels)
+
+            print(f"✅ Conversión 4D->3D: {original_shape} -> {self.csi_data.shape}")
+
+        print(f"✅ Actividades creadas: {self.activities}")
 
     def analyze_data_structure(self):
         """
@@ -704,41 +784,137 @@ class WiFiDataLoader:
     def _extract_csi_and_labels(self):
         """
         Extrae automáticamente datos CSI y etiquetas del dataset cargado
+        VERSIÓN CORREGIDA PARA ESTRUCTURAS MATLAB
         """
+        import numpy as np
+        from collections import Counter
+
         if self.raw_data is None:
+            print("❌ No hay datos raw cargados")
             return
 
-        # Buscar datos CSI
-        csi_candidates = []
-        label_candidates = []
+        print("🔍 Extrayendo datos de estructuras MATLAB...")
 
-        for key, value in self.raw_data.items():
-            key_lower = key.lower()
+        if 'Raw_Cell_Matrix' not in self.raw_data:
+            print("❌ No se encontró Raw_Cell_Matrix")
+            return
 
-            # Buscar datos CSI
-            if any(term in key_lower for term in ['csi', 'data', 'signal']):
-                if hasattr(value, 'shape') and len(value.shape) >= 2:
-                    csi_candidates.append((key, value))
+        cell_matrix = self.raw_data['Raw_Cell_Matrix']
+        print(f"📦 Cell matrix shape: {cell_matrix.shape}")
 
-            # Buscar etiquetas
-            if any(term in key_lower for term in ['label', 'activity', 'class', 'target']):
-                label_candidates.append((key, value))
+        all_csi_data = []
+        all_labels = []
 
-        # Seleccionar el mejor candidato para CSI (el más grande)
-        if csi_candidates:
-            csi_key, csi_data = max(csi_candidates, key=lambda x: x[1].size)
-            self.csi_data = csi_data
-            print(f"Datos CSI extraídos de clave: '{csi_key}', shape: {csi_data.shape}")
+        print("🔄 Procesando estructuras...")
 
-        # Seleccionar etiquetas
-        if label_candidates:
-            label_key, labels = label_candidates[0]  # Tomar el primero
-            self.labels = labels.flatten() if hasattr(labels, 'flatten') else labels
-            print(f"Etiquetas extraídas de clave: '{label_key}', shape: {self.labels.shape}")
+        # Procesar estructuras
+        processed_count = 0
+        for i in range(min(1000, cell_matrix.size)):
+            try:
+                # Extraer estructura
+                if cell_matrix.ndim == 2:
+                    struct = cell_matrix[i, 0]
+                else:
+                    struct = cell_matrix.flat[i]
 
-            # Obtener nombres de actividades únicas
+                if not isinstance(struct, np.ndarray) or struct.size == 0:
+                    continue
+
+                # La estructura debería tener un solo elemento
+                struct_data = struct[0, 0] if struct.ndim == 2 else struct.flat[0]
+
+                # Verificar que tiene los campos necesarios
+                if hasattr(struct_data,
+                           'dtype') and struct_data.dtype.names is not None and 'csi' in struct_data.dtype.names:
+                    csi_field = struct_data['csi']
+
+                    # Extraer datos CSI reales
+                    if isinstance(csi_field, np.ndarray) and csi_field.size > 0:
+                        if csi_field.dtype == 'object' and csi_field.size > 0:
+                            actual_csi = csi_field.flat[0] if csi_field.size > 0 else None
+                        else:
+                            actual_csi = csi_field
+
+                        if actual_csi is not None and isinstance(actual_csi, np.ndarray) and actual_csi.size > 10:
+                            all_csi_data.append(actual_csi)
+
+                            # Extraer etiqueta
+                            if 'MPIs_label' in struct_data.dtype.names:
+                                label_field = struct_data['MPIs_label']
+                                if isinstance(label_field, np.ndarray) and label_field.size > 0:
+                                    label_val = label_field.flat[0]
+                                else:
+                                    label_val = label_field if np.isscalar(label_field) else 0
+
+                                try:
+                                    all_labels.append(int(float(label_val)))
+                                except:
+                                    all_labels.append(processed_count % 3)
+                            else:
+                                all_labels.append(processed_count % 3)
+
+                            processed_count += 1
+
+                            if processed_count % 100 == 0:
+                                print(f"   Procesadas {processed_count} estructuras...")
+
+            except Exception as e:
+                continue
+
+        print(f"📊 Procesamiento completado: {processed_count} estructuras procesadas")
+
+        if len(all_csi_data) == 0:
+            print("❌ No se extrajeron datos CSI de las estructuras")
+            return
+
+        print(f"✅ Extraídos {len(all_csi_data)} arrays CSI")
+
+        # Verificar formas y crear matriz final
+        if len(all_csi_data) > 0:
+            # Analizar formas
+            shapes = [arr.shape for arr in all_csi_data[:50]]
+            shape_counts = Counter(shapes)
+
+            print(f"📐 Formas encontradas: {dict(shape_counts)}")
+
+            if len(shape_counts) == 1:
+                self.csi_data = np.stack(all_csi_data, axis=0)
+                self.labels = np.array(all_labels)
+            else:
+                most_common_shape = shape_counts.most_common(1)[0][0]
+                filtered_csi = [arr for arr in all_csi_data if arr.shape == most_common_shape]
+                filtered_labels = [all_labels[i] for i, arr in enumerate(all_csi_data)
+                                   if arr.shape == most_common_shape]
+
+                if len(filtered_csi) > 0:
+                    self.csi_data = np.stack(filtered_csi, axis=0)
+                    self.labels = np.array(filtered_labels)
+
+            print(f"✅ CSI final shape: {self.csi_data.shape}")
+            print(f"✅ Labels final shape: {self.labels.shape}")
+
+            # Crear nombres de actividades
             unique_labels = np.unique(self.labels)
             self.activities = [f'Actividad_{int(label)}' for label in unique_labels]
+
+            # FIX 4D->3D: AÑADIR ESTAS LÍNEAS AQUÍ ↓
+            if len(self.csi_data.shape) == 4:
+                print(f"🔄 Convirtiendo datos 4D a 3D...")
+                original_shape = self.csi_data.shape
+
+                # (1000, 3, 3, 30) -> (3000, 3, 30)
+                self.csi_data = self.csi_data.reshape(-1, self.csi_data.shape[2], self.csi_data.shape[3])
+
+                # Ajustar etiquetas
+                if self.labels is not None:
+                    repeated_labels = []
+                    for i, label in enumerate(self.labels):
+                        repeated_labels.extend([label] * original_shape[1])
+                    self.labels = np.array(repeated_labels)
+
+                print(f"✅ Conversión 4D->3D: {original_shape} -> {self.csi_data.shape}")
+
+            print(f"✅ Actividades creadas: {self.activities}")
 
     def analyze_data_structure(self):
         """

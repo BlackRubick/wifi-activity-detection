@@ -1,0 +1,31 @@
+{
+  "data": {
+    "sampling_rate": 1000,
+    "window_size": 1000,
+    "overlap": 0.5
+  },
+  "preprocessing": {
+    "bandpass_filter": {
+      "lowcut": 1,
+      "highcut": 50,
+      "order": 3
+    },
+    "normalization": "standard",
+    "outlier_removal": {
+      "method": "zscore",
+      "threshold": 3
+    }
+  },
+  "feature_extraction": {
+    "extract_temporal": true,
+    "extract_frequency": true,
+    "extract_timefrequency": true,
+    "extract_correlation": true,
+    "extract_wavelet": true
+  },
+  "modeling": {
+    "test_size": 0.2,
+    "validation_size": 0.15,
+    "random_state": 42
+  }
+}
