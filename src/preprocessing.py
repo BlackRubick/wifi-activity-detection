@@ -84,11 +84,18 @@ class CSIPreprocessor:
 
     def apply_median_filter(self, data, kernel_size=3):
         """
-        Aplica filtro mediano para eliminar picos
+        Aplica filtro mediano para eliminar picos - VERSIÓN CORREGIDA PARA DATOS COMPLEJOS
+
+        Args:
+            data: Datos de entrada (pueden ser complejos)
+            kernel_size (int): Tamaño del kernel
+
+        Returns:
+            np.ndarray: Datos filtrados
         """
         print(f"Aplicando filtro mediano con kernel size: {kernel_size}")
 
-        # FIX: Verificar si data es una tupla
+        # FIX: Verificar si data es una tupla (bug del pipeline)
         if isinstance(data, tuple):
             print(f"⚠️ Datos recibidos como tupla, extrayendo array...")
             data = data[0] if len(data) > 0 else data
@@ -97,18 +104,19 @@ class CSIPreprocessor:
         if not hasattr(data, 'shape'):
             print(f"❌ Error: datos no tienen atributo 'shape'. Tipo: {type(data)}")
             return data
-        """
-        Aplica filtro mediano para eliminar picos
 
-        Args:
-            data: Datos de entrada
-            kernel_size (int): Tamaño del kernel
+        print(f"📊 Entrada: shape={data.shape}, dtype={data.dtype}")
 
-        Returns:
-            np.ndarray: Datos filtrados
-        """
-        print(f"Aplicando filtro mediano con kernel size: {kernel_size}")
+        # ======================================
+        # FIX PRINCIPAL: Manejar datos complejos
+        # ======================================
+        if np.iscomplexobj(data):
+            print("🔧 Datos complejos detectados - usando solo amplitud")
+            # OPCIÓN SIMPLE: Convertir a amplitud/magnitud
+            data = np.abs(data)
+            print(f"✅ Convertido a amplitud: shape={data.shape}, dtype={data.dtype}")
 
+        # Continuar con el procesamiento normal
         filtered_data = np.zeros_like(data)
 
         if len(data.shape) == 3:
@@ -119,6 +127,7 @@ class CSIPreprocessor:
             for ch in range(data.shape[1]):
                 filtered_data[:, ch] = signal.medfilt(data[:, ch], kernel_size)
 
+        print(f"✅ Filtrado completado: dtype={filtered_data.dtype}")
         return filtered_data
 
     def apply_moving_average(self, data, window_size=5):

@@ -33,14 +33,3 @@ wifi-activity-detection/
 └── requirements.txt
 ```
 
-## Instalación
-
-```bash
-pip install -r requirements.txt
-```
-
-## Uso
-
-1. Coloca el dataset WI-MIR en la carpeta `data/raw/`
-2. Ejecuta los notebooks en orden numérico
-3. Los resultados se guardarán en la carpeta `results/`

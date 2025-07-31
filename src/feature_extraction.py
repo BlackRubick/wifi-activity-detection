@@ -553,20 +553,47 @@ class CSIFeatureExtractor:
 
 def analyze_feature_importance(features, labels, feature_names, method='f_classif', k=50):
     """
-    Analiza la importancia de las características
-
-    Args:
-        features: Array de características
-        labels: Etiquetas
-        feature_names: Nombres de las características
-        method (str): Método de análisis ('f_classif', 'mutual_info')
-        k (int): Número de características a seleccionar
-
-    Returns:
-        tuple: (características_seleccionadas, nombres_seleccionados, dataframe_importancia)
+    Analiza la importancia de las características - VERSIÓN CORREGIDA PARA VALORES INFINITOS
     """
     print(f"Analizando importancia de características usando {method}...")
 
+    # ======================================
+    # FIX: Limpiar datos antes del análisis
+    # ======================================
+    print(f"📊 Datos originales: {features.shape}")
+    print(f"   NaN: {np.sum(np.isnan(features))}")
+    print(f"   Inf: {np.sum(np.isinf(features))}")
+
+    # Limpiar valores infinitos y NaN
+    features_clean = features.copy()
+
+    # Reemplazar infinitos con valores finitos
+    inf_mask = np.isinf(features_clean)
+    if np.any(inf_mask):
+        print(f"⚠️ Encontrados {np.sum(inf_mask)} valores infinitos - reemplazando...")
+
+        # Para cada columna, reemplazar inf con el valor máximo finito * 2
+        for col in range(features_clean.shape[1]):
+            col_data = features_clean[:, col]
+            if np.any(np.isinf(col_data)):
+                finite_values = col_data[np.isfinite(col_data)]
+                if len(finite_values) > 0:
+                    max_finite = np.max(finite_values)
+                    features_clean[np.isinf(col_data), col] = max_finite * 2
+                else:
+                    features_clean[np.isinf(col_data), col] = 1.0
+
+    # Reemplazar NaN con mediana
+    nan_mask = np.isnan(features_clean)
+    if np.any(nan_mask):
+        print(f"⚠️ Encontrados {np.sum(nan_mask)} valores NaN - reemplazando...")
+        from sklearn.impute import SimpleImputer
+        imputer = SimpleImputer(strategy='median')
+        features_clean = imputer.fit_transform(features_clean)
+
+    print(f"✅ Datos limpios: NaN={np.sum(np.isnan(features_clean))}, Inf={np.sum(np.isinf(features_clean))}")
+
+    # Continuar con el análisis usando datos limpios
     if method == 'f_classif':
         selector = SelectKBest(score_func=f_classif, k=k)
     elif method == 'mutual_info':
@@ -576,17 +603,32 @@ def analyze_feature_importance(features, labels, feature_names, method='f_classi
         selector = SelectKBest(score_func=f_classif, k=k)
 
     # Seleccionar características
-    features_selected = selector.fit_transform(features, labels)
+    features_selected = selector.fit_transform(features_clean, labels)
 
     # Obtener scores e indices
     scores = selector.scores_
     selected_indices = selector.get_support(indices=True)
     selected_features_names = [feature_names[i] for i in selected_indices]
 
+    # ======================================
+    # FIX: Limpiar scores para visualización
+    # ======================================
+    # Reemplazar scores infinitos
+    scores_clean = scores.copy()
+    inf_scores = np.isinf(scores_clean)
+    if np.any(inf_scores):
+        print(f"⚠️ {np.sum(inf_scores)} scores infinitos encontrados - reemplazando...")
+        finite_scores = scores_clean[np.isfinite(scores_clean)]
+        if len(finite_scores) > 0:
+            max_finite_score = np.max(finite_scores)
+            scores_clean[inf_scores] = max_finite_score * 2
+        else:
+            scores_clean[inf_scores] = 1.0
+
     # Crear DataFrame para análisis
     importance_df = pd.DataFrame({
         'feature': feature_names,
-        'score': scores,
+        'score': scores_clean,  # Usar scores limpios
         'selected': selector.get_support()
     }).sort_values('score', ascending=False)
 
@@ -611,16 +653,35 @@ def analyze_feature_importance(features, labels, feature_names, method='f_classi
         else:
             bars[i].set_color('lightblue')
 
-    # Distribución de scores
+    # Distribución de scores - CON PROTECCIÓN ADICIONAL
     plt.subplot(2, 1, 2)
-    plt.hist(importance_df['score'], bins=50, alpha=0.7, edgecolor='black')
-    plt.axvline(importance_df.iloc[k - 1]['score'], color='red', linestyle='--',
-                label=f'Umbral top-{k}')
-    plt.title('Distribución de Scores de Importancia')
-    plt.xlabel('Score')
-    plt.ylabel('Frecuencia')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    try:
+        # Filtrar scores finitos para el histograma
+        finite_scores_for_hist = importance_df['score'][np.isfinite(importance_df['score'])]
+
+        if len(finite_scores_for_hist) > 0:
+            plt.hist(finite_scores_for_hist, bins=50, alpha=0.7, edgecolor='black')
+
+            # Threshold line
+            if k <= len(importance_df):
+                threshold_score = importance_df.iloc[k - 1]['score']
+                if np.isfinite(threshold_score):
+                    plt.axvline(threshold_score, color='red', linestyle='--',
+                                label=f'Umbral top-{k}')
+                    plt.legend()
+        else:
+            plt.text(0.5, 0.5, 'No hay scores finitos para mostrar',
+                     ha='center', va='center', transform=plt.gca().transAxes)
+
+        plt.title('Distribución de Scores de Importancia')
+        plt.xlabel('Score')
+        plt.ylabel('Frecuencia')
+        plt.grid(True, alpha=0.3)
+
+    except Exception as e:
+        print(f"⚠️ Error creando histograma: {e}")
+        plt.text(0.5, 0.5, f'Error en visualización: {str(e)[:50]}...',
+                 ha='center', va='center', transform=plt.gca().transAxes)
 
     plt.tight_layout()
     plt.show()

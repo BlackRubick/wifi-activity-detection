@@ -6,6 +6,7 @@ Este módulo contiene todas las funcionalidades para cargar, explorar y analizar
 los datos del dataset WI-MIR para detección de actividades humanas.
 """
 
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -98,8 +99,7 @@ class WiFiDataLoader:
         all_labels = []
 
         print("🔄 Procesando estructuras...")
-
-        for i in range(min(1000, cell_matrix.size)):  # Procesar hasta 1000 estructuras
+        for i in range(min(5000, cell_matrix.size)):  # Procesar hasta 1000 estructuras
             try:
                 # Extraer estructura
                 if cell_matrix.ndim == 2:
