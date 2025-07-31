@@ -1,0 +1,20 @@
+
+# Reporte Resumen del Proyecto WiFi Activity Detection
+# Generado: 2025-07-31 03:28:53
+
+## Información del Proyecto
+Proyecto: Detección de Actividad Humana con WiFi Sensing
+Dataset: Real: data/raw/S1_S2_L1_T4.mat
+Fecha: 2025-07-31 03:28:53
+Datos_forma: (3000, 3, 30)
+Datos_procesados: (5, 1000, 3, 30)
+Características: (5, 50)
+Modelos_entrenados: 2
+Actividades: Actividad_0, Actividad_1, Actividad_2
+
+## Resultados
+random_forest_accuracy: 0.5000
+svm_accuracy: 0.5000
+xgboost_accuracy: 0.0000
+mejor_modelo: random_forest
+mejor_accuracy: 0.5000

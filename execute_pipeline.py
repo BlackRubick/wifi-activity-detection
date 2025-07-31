@@ -30,7 +30,7 @@ def find_mat_files(data_raw_path="data/raw"):
         list: Lista de archivos .mat encontrados
     """
     mat_files = glob.glob(os.path.join(data_raw_path, "*.mat"))
-    print(f" Archivos .mat encontrados: {len(mat_files)}")
+    print(f"📁 Archivos .mat encontrados: {len(mat_files)}")
 
     for i, file in enumerate(mat_files, 1):
         file_size = os.path.getsize(file) / (1024 ** 2)  # MB
@@ -50,11 +50,11 @@ def select_file_interactive(mat_files):
         str: Archivo seleccionado
     """
     if not mat_files:
-        print(" No se encontraron archivos .mat en data/raw/")
+        print("❌ No se encontraron archivos .mat en data/raw/")
         return None
 
     if len(mat_files) == 1:
-        print(f" Usando único archivo encontrado: {mat_files[0]}")
+        print(f"✓ Usando único archivo encontrado: {mat_files[0]}")
         return mat_files[0]
 
     print("\n🔍 Selecciona un archivo para procesar:")
@@ -71,11 +71,11 @@ def select_file_interactive(mat_files):
         elif 1 <= choice <= len(mat_files):
             return mat_files[choice - 1]
         else:
-            print(" Selección inválida")
+            print("❌ Selección inválida")
             return None
 
     except ValueError:
-        print(" Entrada inválida")
+        print("❌ Entrada inválida")
         return None
 
 
@@ -96,8 +96,8 @@ def run_pipeline_for_file(mat_file, output_base="results"):
     file_name = Path(mat_file).stem
     output_path = f"{output_base}_{file_name}"
 
-    print(f"\n PROCESANDO: {os.path.basename(mat_file)}")
-    print(f" Resultados en: {output_path}")
+    print(f"\n🚀 PROCESANDO: {os.path.basename(mat_file)}")
+    print(f"📂 Resultados en: {output_path}")
     print("=" * 80)
 
     try:
@@ -109,14 +109,14 @@ def run_pipeline_for_file(mat_file, output_base="results"):
 
         pipeline.run()
 
-        print(f"\n PROCESAMIENTO EXITOSO: {os.path.basename(mat_file)}")
-        print(f" Resultados guardados en: {output_path}")
+        print(f"\n✅ PROCESAMIENTO EXITOSO: {os.path.basename(mat_file)}")
+        print(f"📊 Resultados guardados en: {output_path}")
 
         return True
 
     except Exception as e:
-        print(f"\n ERROR procesando {os.path.basename(mat_file)}: {e}")
-        print(f" Detalles del error guardados en logs")
+        print(f"\n❌ ERROR procesando {os.path.basename(mat_file)}: {e}")
+        print(f"📋 Detalles del error guardados en logs")
         return False
 
 
@@ -131,7 +131,7 @@ def run_batch_processing(mat_files, output_base="results"):
     Returns:
         dict: Reporte de procesamiento
     """
-    print(f"\n PROCESAMIENTO EN LOTE: {len(mat_files)} archivos")
+    print(f"\n🔄 PROCESAMIENTO EN LOTE: {len(mat_files)} archivos")
     print("=" * 80)
 
     results = {
@@ -152,13 +152,13 @@ def run_batch_processing(mat_files, output_base="results"):
 
     # Reporte final
     print("\n" + "=" * 80)
-    print(" REPORTE FINAL DE PROCESAMIENTO EN LOTE")
+    print("📊 REPORTE FINAL DE PROCESAMIENTO EN LOTE")
     print("=" * 80)
-    print(f" Exitosos: {len(results['successful'])}/{results['total']}")
-    print(f" Fallidos: {len(results['failed'])}/{results['total']}")
+    print(f"✅ Exitosos: {len(results['successful'])}/{results['total']}")
+    print(f"❌ Fallidos: {len(results['failed'])}/{results['total']}")
 
     if results['failed']:
-        print(f"\n️ Archivos con errores:")
+        print(f"\n⚠️ Archivos con errores:")
         for failed_file in results['failed']:
             print(f"   - {os.path.basename(failed_file)}")
 
@@ -183,7 +183,7 @@ def create_batch_config(output_path="configs/batch_config.json"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     save_config(config, output_path)
-    print(f" Configuración de lote guardada en: {output_path}")
+    print(f"📝 Configuración de lote guardada en: {output_path}")
 
     return config
 
@@ -238,17 +238,17 @@ Ejemplos de uso:
 
     args = parser.parse_args()
 
-    print(" EJECUTOR DEL PIPELINE WIFI ACTIVITY DETECTION")
+    print("🎯 EJECUTOR DEL PIPELINE WIFI ACTIVITY DETECTION")
     print("=" * 60)
 
     # Verificar estructura del proyecto
     if not os.path.exists('main.py'):
-        print(" Error: No se encuentra src/main.py")
+        print("❌ Error: No se encuentra src/main.py")
         print("   Asegúrate de ejecutar desde el directorio raíz del proyecto")
         sys.exit(1)
 
     if not os.path.exists(args.raw_path):
-        print(f" Error: No se encuentra la carpeta {args.raw_path}")
+        print(f"❌ Error: No se encuentra la carpeta {args.raw_path}")
         print("   Crea la carpeta y coloca tus archivos .mat allí")
         sys.exit(1)
 
@@ -267,12 +267,12 @@ Ejemplos de uso:
             print(f"❌ Error: Archivo no encontrado: {args.file}")
             sys.exit(1)
 
-        print(f" Procesando archivo específico: {args.file}")
+        print(f"📄 Procesando archivo específico: {args.file}")
         run_pipeline_for_file(args.file, args.output)
 
     elif args.all or args.batch:
         # Todos los archivos
-        print(f" Procesando todos los archivos en modo lote")
+        print(f"📦 Procesando todos los archivos en modo lote")
         create_batch_config()  # Crear configuración optimizada
         run_batch_processing(mat_files, args.output)
 
@@ -281,14 +281,14 @@ Ejemplos de uso:
         selected = select_file_interactive(mat_files)
 
         if selected is None:
-            print(" No se seleccionó ningún archivo")
+            print("❌ No se seleccionó ningún archivo")
             sys.exit(1)
         elif selected == "ALL":
-            print(f" Procesando todos los archivos")
+            print(f"📦 Procesando todos los archivos")
             create_batch_config()
             run_batch_processing(mat_files, args.output)
         else:
-            print(f" Procesando archivo seleccionado: {selected}")
+            print(f"📄 Procesando archivo seleccionado: {selected}")
             run_pipeline_for_file(selected, args.output)
 
 

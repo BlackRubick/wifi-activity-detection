@@ -22,11 +22,11 @@ def extract_csi_from_structs(filepath):
     clean_data = {k: v for k, v in data.items() if not k.startswith('__')}
 
     if 'Raw_Cell_Matrix' not in clean_data:
-        print(" No se encontró Raw_Cell_Matrix")
+        print("❌ No se encontró Raw_Cell_Matrix")
         return None, None
 
     cell_matrix = clean_data['Raw_Cell_Matrix']
-    print(f" Cell matrix shape: {cell_matrix.shape}")
+    print(f"📦 Cell matrix shape: {cell_matrix.shape}")
 
     # Listas para acumular datos
     all_csi_data = []
@@ -87,7 +87,7 @@ def extract_csi_from_structs(filepath):
                 print(f"   [{i:3d}] Error: {e}")
             continue
 
-    print(f"\n RESUMEN DE EXTRACCIÓN:")
+    print(f"\n📊 RESUMEN DE EXTRACCIÓN:")
     print(f"   CSI arrays extraídos: {len(all_csi_data)}")
     print(f"   Etiquetas extraídas: {len(all_labels)}")
 
@@ -107,7 +107,7 @@ def extract_csi_from_structs(filepath):
         combined_labels = np.array(all_labels)
     else:
         # Formas diferentes - concatenar temporalmente
-        print(" Formas CSI diferentes - Concatenando temporalmente...")
+        print("⚠️ Formas CSI diferentes - Concatenando temporalmente...")
         # Tomar solo los que tengan la forma más común
         from collections import Counter
         shape_counts = Counter(shapes)
@@ -159,7 +159,7 @@ def _extract_csi_and_labels(self):
     all_csi_data = []
     all_labels = []
 
-    print(" Procesando estructuras...")
+    print("🔄 Procesando estructuras...")
 
     for i in range(min(1000, cell_matrix.size)):  # Procesar hasta 1000 estructuras
         try:
@@ -263,16 +263,16 @@ if __name__ == "__main__":
     csi_data, labels = extract_csi_from_structs(filepath)
 
     if csi_data is not None:
-        print(f"\n EXTRACCIÓN EXITOSA!")
-        print(f" CSI shape final: {csi_data.shape}")
-        print(f" Labels shape: {labels.shape}")
-        print(f"Etiquetas únicas: {np.unique(labels)}")
+        print(f"\n🎉 EXTRACCIÓN EXITOSA!")
+        print(f"📊 CSI shape final: {csi_data.shape}")
+        print(f"🏷️ Labels shape: {labels.shape}")
+        print(f"📈 Etiquetas únicas: {np.unique(labels)}")
 
-        print(f"\n CÓDIGO PARA DATA_LOADER:")
+        print(f"\n🔧 CÓDIGO PARA DATA_LOADER:")
         print("=" * 60)
         print("Reemplaza el método _extract_csi_and_labels en src/data_loader.py con:")
         print(create_data_loader_for_structs())
 
     else:
-        print(f"\n No se pudo extraer CSI")
-        print(" Revisa manualmente la estructura del archivo")
+        print(f"\n❌ No se pudo extraer CSI")
+        print("💡 Revisa manualmente la estructura del archivo")

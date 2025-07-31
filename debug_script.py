@@ -20,12 +20,12 @@ def debug_mat_file(filepath):
     data = loadmat(filepath)
     clean_data = {k: v for k, v in data.items() if not k.startswith('__')}
 
-    print(f" Variables: {list(clean_data.keys())}")
+    print(f"📊 Variables: {list(clean_data.keys())}")
 
     # Analizar Raw_Cell_Matrix
     if 'Raw_Cell_Matrix' in clean_data:
         cell_matrix = clean_data['Raw_Cell_Matrix']
-        print(f"\n Raw_Cell_Matrix:")
+        print(f"\n📦 Raw_Cell_Matrix:")
         print(f"   Shape: {cell_matrix.shape}")
         print(f"   Dtype: {cell_matrix.dtype}")
         print(f"   Size: {cell_matrix.size}")
@@ -55,7 +55,7 @@ def debug_mat_file(filepath):
 
                             # ¿Es este el CSI?
                             if element.size > 1000 and np.std(element) > 0:
-                                print(f"¡POSIBLE CSI DETECTADO!")
+                                print(f"        🎯 ¡POSIBLE CSI DETECTADO!")
 
                                 # Mostrar más detalles
                                 if len(element.shape) == 3:
@@ -65,7 +65,7 @@ def debug_mat_file(filepath):
                                     print(f"        📊 2D: [dim1={element.shape[0]}, dim2={element.shape[1]}]")
 
                                 # Esta es la línea de código que necesitas
-                                print(f"CÓDIGO: csi_data = raw_cell[{i}, 0]")
+                                print(f"        💡 CÓDIGO: csi_data = raw_cell[{i}, 0]")
                                 return i  # Retornar índice del CSI
 
                         except Exception as e:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         files = glob.glob("data/raw/*.mat")
         if files:
             filepath = files[0]
-            print(f" Usando: {filepath}")
+            print(f"📁 Usando: {filepath}")
         else:
             print("❌ No se encontró archivo .mat")
             print("Uso: python debug_script.py archivo.mat")
@@ -105,7 +105,15 @@ if __name__ == "__main__":
     csi_index = debug_mat_file(filepath)
 
     if csi_index is not None:
-        print(f"\n CSI ENCONTRADO EN ÍNDICE: {csi_index}")
+        print(f"\n🎯 CSI ENCONTRADO EN ÍNDICE: {csi_index}")
+        print(f"\n🔧 SOLUCIÓN:")
+        print(f"Modifica src/data_loader.py, método _extract_csi_and_labels")
+        print(f"Cambia la línea donde dice:")
+        print(f"   element = raw_cell[i, 0]")
+        print(f"Por:")
+        print(f"   element = raw_cell[{csi_index}, 0]")
+        print(f"")
+        print(f"O mejor aún, usa este código completo:")
 
         code = f'''
 def _extract_csi_and_labels(self):
@@ -153,5 +161,5 @@ def _extract_csi_and_labels(self):
         print(code)
 
     else:
-        print(f"\n No se detectó CSI automáticamente")
-        print(f" Revisa manualmente los elementos mostrados arriba")
+        print(f"\n❌ No se detectó CSI automáticamente")
+        print(f"💡 Revisa manualmente los elementos mostrados arriba")

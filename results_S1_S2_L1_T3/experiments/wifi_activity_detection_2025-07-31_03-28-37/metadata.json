@@ -1,0 +1,8 @@
+{
+  "created_at": "2025-07-31T03:28:37.375927",
+  "experiment_name": "wifi_activity_detection",
+  "params": {
+    "best_model": "random_forest"
+  },
+  "finished_at": "2025-07-31T03:28:45.033468"
+}

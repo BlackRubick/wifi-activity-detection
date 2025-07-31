@@ -54,15 +54,31 @@ class ActivityRecognitionModels:
 
     def prepare_data(self, features, labels, test_size=0.3, validation_size=0.2):
         """
-        Prepara los datos para entrenamiento - VERSIÓN PARA DATASETS PEQUEÑOS
+        Prepara los datos para entrenamiento - VERSIÓN CORREGIDA PARA ETIQUETAS NO CONSECUTIVAS
         """
         print("Preparando datos para entrenamiento...")
 
-        # Codificar etiquetas
+        # ======================================
+        # FIX PRINCIPAL: Recodificar etiquetas para que sean consecutivas
+        # ======================================
+        unique_labels = np.unique(labels)
+        print(f"Etiquetas originales únicas: {unique_labels}")
+
+        # Crear mapeo de etiquetas originales a consecutivas
+        label_mapping = {old_label: new_label for new_label, old_label in enumerate(unique_labels)}
+        labels_remapped = np.array([label_mapping[label] for label in labels])
+
+        print(f"Mapeo de etiquetas: {label_mapping}")
+        print(f"Etiquetas remapeadas únicas: {np.unique(labels_remapped)}")
+
+        # Codificar etiquetas (ahora ya son consecutivas)
         self.label_encoder = LabelEncoder()
-        labels_encoded = self.label_encoder.fit_transform(labels)
+        labels_encoded = self.label_encoder.fit_transform(labels_remapped)
         self.n_classes = len(np.unique(labels_encoded))
-        self.class_names = self.label_encoder.classes_
+
+        # Guardar mapeo para uso posterior
+        self.original_label_mapping = label_mapping
+        self.class_names = [f'Clase_{i}' for i in range(self.n_classes)]
 
         print(f"Dataset: {len(features)} muestras, {self.n_classes} clases")
         print(f"Distribución: {np.bincount(labels_encoded)}")
@@ -113,6 +129,29 @@ class ActivityRecognitionModels:
             self.X_train, self.y_train = self.X_train_temp, self.y_train_temp
             self.X_val, self.y_val = self.X_train, self.y_train
 
+        # ======================================
+        # FIX ADICIONAL: Verificar que las etiquetas son consecutivas
+        # ======================================
+        print(f"✅ Verificación final:")
+        print(f"   y_train único: {np.unique(self.y_train)}")
+        print(f"   y_val único: {np.unique(self.y_val)}")
+        print(f"   y_test único: {np.unique(self.y_test)}")
+
+        # Asegurar que todas las divisiones tengan etiquetas consecutivas desde 0
+        all_labels = np.concatenate([self.y_train, self.y_val, self.y_test])
+        if not np.array_equal(np.unique(all_labels), np.arange(len(np.unique(all_labels)))):
+            print("⚠️ Ajustando etiquetas para ser completamente consecutivas...")
+
+            # Re-mapear todas las etiquetas para ser 0, 1, 2, ...
+            final_encoder = LabelEncoder()
+            self.y_train = final_encoder.fit_transform(self.y_train)
+            self.y_val = final_encoder.transform(self.y_val)
+            self.y_test = final_encoder.transform(self.y_test)
+
+            print(f"   y_train ajustado: {np.unique(self.y_train)}")
+            print(f"   y_val ajustado: {np.unique(self.y_val)}")
+            print(f"   y_test ajustado: {np.unique(self.y_test)}")
+
         # Normalizar características
         self.scaler = StandardScaler()
         self.X_train_scaled = self.scaler.fit_transform(self.X_train)
@@ -130,6 +169,7 @@ class ActivityRecognitionModels:
         print(f"  Test: {self.X_test.shape[0]} muestras")
         print(f"  Características: {self.X_train.shape[1]}")
 
+        return self.X_train_scaled, self.X_val_scaled, self.X_test_scaled
         return self.X_train_scaled, self.X_val_scaled, self.X_test_scaled
     def train_random_forest(self, n_estimators=100, max_depth=None, **kwargs):
         """
