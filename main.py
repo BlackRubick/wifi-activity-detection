@@ -290,7 +290,7 @@ class WiFiActivityDetectionPipeline:
 
         # Análisis de características
         print("📊 Analizando importancia de características...")
-        from feature_extraction import analyze_feature_importance, apply_pca_analysis
+        from src.feature_extraction import analyze_feature_importance, apply_pca_analysis
 
         features_selected, selected_names, importance_df = analyze_feature_importance(
             self.features, self.labels, self.feature_extractor.feature_names, k=50
@@ -412,7 +412,7 @@ class WiFiActivityDetectionPipeline:
         self.models.generate_classification_reports()
 
         # Análisis comparativo
-        from models import compare_model_performance, analyze_feature_importance
+        from src.models import compare_model_performance, analyze_feature_importance
         performance_df = compare_model_performance(self.models.results)
 
         if hasattr(self.feature_extractor, 'feature_names'):
@@ -477,7 +477,7 @@ class WiFiActivityDetectionPipeline:
             results_summary['mejor_accuracy'] = f"{best_accuracy:.4f}"
 
         # Crear reporte
-        from utils import create_summary_report
+        from src.utils import create_summary_report
         create_summary_report(
             project_info,
             results_summary,

@@ -169,7 +169,7 @@ def create_batch_config(output_path="configs/batch_config.json"):
     """
     Crea configuración optimizada para procesamiento en lote
     """
-    from utils import save_config, get_default_config
+    from src.utils import save_config, get_default_config
 
     # Configuración optimizada para lote
     config = get_default_config()
